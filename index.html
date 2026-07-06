@@ -1,80 +1,132 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Weather Map</title>
+  <meta charset="UTF-8">
+  <title>Meteo Dashboard</title>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <!-- FIXED Chart.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 
-<style>
-  body { margin:0; font-family:Arial; }
-  #map { height: 90vh; }
-  .panel {
-    background:#111827;
-    color:white;
-    padding:10px;
-    text-align:center;
-  }
-  button {
-    margin:5px;
-    padding:10px;
-    border:none;
-    border-radius:6px;
-    cursor:pointer;
-  }
-</style>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+      padding: 20px;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    canvas {
+      margin-top: 20px;
+      max-width: 900px;
+      background: #111827;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
+    #out {
+      margin-top: 20px;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 
 <body>
 
-<div class="panel">
-  <button onclick="setLayer('temp')">Temperature</button>
-  <button onclick="setLayer('wind')">Wind</button>
-  <button onclick="setLayer('clouds')">Clouds</button>
-</div>
+<h1>🌦 Meteo Dashboard</h1>
 
-<div id="map"></div>
+<button onclick="current()">Current</button>
+<button onclick="last24()">24h</button>
+<button onclick="forecast()">7 days</button>
+
+<pre id="out">Loading...</pre>
+
+<canvas id="chart"></canvas>
 
 <script>
-const map = L.map('map').setView([49.84, 24.03], 6);
+const lat = 49.84;
+const lon = 24.03;
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  attribution: 'OSM'
-}).addTo(map);
+let chart = null;
 
-let layer;
+// ---- CURRENT ----
+async function current() {
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`);
+  const d = await r.json();
 
-// ⚠️ нужен API key (бесплатный)
-const API_KEY = "PUT_YOUR_OPENWEATHER_KEY_HERE";
-
-function setLayer(type) {
-
-  if (layer) {
-    map.removeLayer(layer);
-  }
-
-  let url = "";
-
-  if (type === "temp") {
-    url = `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
-  }
-
-  if (type === "wind") {
-    url = `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
-  }
-
-  if (type === "clouds") {
-    url = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
-  }
-
-  layer = L.tileLayer(url, {
-    opacity: 0.6
-  }).addTo(map);
+  document.getElementById("out").textContent =
+    "🌡 Current: " + d.current.temperature_2m + "°C";
 }
 
-// старт
-setLayer("temp");
+// ---- 24H ----
+async function last24() {
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`);
+  const d = await r.json();
+
+  const temps = d.hourly.temperature_2m.slice(-24);
+  const times = d.hourly.time.slice(-24).map(t => t.slice(11,16));
+
+  drawChart(times, temps, "Temperature 24h");
+}
+
+// ---- 7 DAY ----
+async function forecast() {
+  const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max&forecast_days=7`);
+  const d = await r.json();
+
+  drawChart(d.daily.time, d.daily.temperature_2m_max, "7 Day Max Temp");
+}
+
+// ---- CHART ----
+function drawChart(labels, values, title) {
+  const canvas = document.getElementById("chart");
+
+  if (!canvas) {
+    alert("Canvas not found!");
+    return;
+  }
+
+  const ctx = canvas.getContext("2d");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels,
+      datasets: [{
+        label: title,
+        data: values,
+        borderColor: "#00ffff",
+        backgroundColor: "rgba(0,255,255,0.1)",
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: "white" }
+        }
+      },
+      scales: {
+        x: { ticks: { color: "white" } },
+        y: { ticks: { color: "white" } }
+      }
+    }
+  });
+
+  document.getElementById("out").textContent = "📊 Chart loaded: " + title;
+}
 </script>
 
 </body>
