@@ -1,16 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta charset="UTF-8">
   <title>Meteo Dashboard</title>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
-      <canvas id="chart" width="400" height="200"></canvas>
       font-family: Arial;
       background: #0f172a;
       color: white;
       text-align: center;
+      margin: 0;
+      padding: 20px;
     }
 
     button {
@@ -21,11 +25,17 @@
       border-radius: 8px;
     }
 
+    canvas {
+      margin-top: 20px;
+      max-width: 900px;
+      background: #111827;
+      border-radius: 10px;
+      padding: 10px;
+    }
+
     #out {
       margin-top: 20px;
       white-space: pre-wrap;
-      text-align: left;
-      display: inline-block;
     }
   </style>
 </head>
@@ -40,40 +50,13 @@
 
 <pre id="out">Click a button...</pre>
 
+<canvas id="chart"></canvas>
+
 <script>
-let chart;
 const lat = 49.84;
 const lon = 24.03;
-  
-function drawChart(labels, values, title) {
-  const ctx = document.getElementById("chart").getContext("2d");
 
-  if (chart) chart.destroy();
-
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: title,
-        data: values,
-        borderColor: "cyan",
-        fill: false,
-        tension: 0.3
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: { labels: { color: "white" } }
-      },
-      scales: {
-        x: { ticks: { color: "white" } },
-        y: { ticks: { color: "white" } }
-      }
-    }
-  });
-}
+let chart = null;
 
 async function current() {
   const r = await fetch(
@@ -85,7 +68,7 @@ async function current() {
     "🌡 Current temperature: " + d.current.temperature_2m + "°C";
 }
 
-  async function last24() {
+async function last24() {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`
   );
@@ -99,15 +82,6 @@ async function current() {
   document.getElementById("out").textContent =
     "📊 24h chart loaded";
 }
-  const last = d.hourly.temperature_2m.slice(-24);
-
-  let out = "📊 Last 24h:\n\n";
-  last.forEach((t, i) => {
-    out += `${i}: ${t}°C\n`;
-  });
-
-  document.getElementById("out").textContent = out;
-}
 
 async function forecast() {
   const r = await fetch(
@@ -118,19 +92,49 @@ async function forecast() {
   const days = d.daily.time;
   const max = d.daily.temperature_2m_max;
 
-  drawChart(days, max, "Max temperature (7 days)");
+  drawChart(days, max, "Max Temperature (7 days)");
 
   document.getElementById("out").textContent =
     "📅 7-day chart loaded";
 }
 
-  let out = "📅 7-day forecast:\n\n";
+function drawChart(labels, values, title) {
+  const ctx = document.getElementById("chart").getContext("2d");
 
-  for (let i = 0; i < d.daily.time.length; i++) {
-    out += `${d.daily.time[i]} → ${d.daily.temperature_2m_min[i]}°C / ${d.daily.temperature_2m_max[i]}°C\n`;
+  if (chart) {
+    chart.destroy();
   }
 
-  document.getElementById("out").textContent = out;
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: title,
+        data: values,
+        borderColor: "cyan",
+        backgroundColor: "rgba(0,255,255,0.1)",
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: {
+          labels: { color: "white" }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: "white" }
+        },
+        y: {
+          ticks: { color: "white" }
+        }
+      }
+    }
+  });
 }
 </script>
 
