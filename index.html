@@ -1,141 +1,88 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
-  <title>Meteo Dashboard</title>
+  <title>Weather Map</title>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
   <style>
     body {
+      margin: 0;
       font-family: Arial;
       background: #0f172a;
       color: white;
+    }
+
+    #map {
+      height: 90vh;
+      width: 100%;
+    }
+
+    .panel {
+      padding: 10px;
       text-align: center;
-      margin: 0;
-      padding: 20px;
+      background: #111827;
     }
 
     button {
       margin: 5px;
-      padding: 10px 15px;
-      border: none;
-      cursor: pointer;
-      border-radius: 8px;
-    }
-
-    canvas {
-      margin-top: 20px;
-      max-width: 900px;
-      background: #111827;
-      border-radius: 10px;
       padding: 10px;
-    }
-
-    #out {
-      margin-top: 20px;
-      white-space: pre-wrap;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 
 <body>
 
-<h1>🌦 Meteo Dashboard</h1>
+<div class="panel">
+  <button onclick="setModel('gfs')">GFS</button>
+  <button onclick="setModel('ecmwf')">ECMWF</button>
+</div>
 
-<button onclick="current()">Current</button>
-<button onclick="last24()">24h</button>
-<button onclick="forecast()">7 days</button>
-
-<pre id="out">Click a button...</pre>
-
-<canvas id="chart"></canvas>
+<div id="map"></div>
 
 <script>
 const lat = 49.84;
 const lon = 24.03;
 
-let chart = null;
+let map = L.map('map').setView([lat, lon], 6);
 
-async function current() {
-  const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`
-  );
-  const d = await r.json();
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: 'OSM'
+}).addTo(map);
 
-  document.getElementById("out").textContent =
-    "🌡 Current temperature: " + d.current.temperature_2m + "°C";
-}
+let tempLayer;
 
-async function last24() {
-  const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`
-  );
-  const d = await r.json();
+// 🌡 добавить слой температуры
+function addTempLayer(model) {
 
-  const temps = d.hourly.temperature_2m.slice(-24);
-  const times = d.hourly.time.slice(-24).map(t => t.slice(11, 16));
-
-  drawChart(times, temps, "Temperature (24h)");
-
-  document.getElementById("out").textContent =
-    "📊 24h chart loaded";
-}
-
-async function forecast() {
-  const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&forecast_days=7`
-  );
-  const d = await r.json();
-
-  const days = d.daily.time;
-  const max = d.daily.temperature_2m_max;
-
-  drawChart(days, max, "Max Temperature (7 days)");
-
-  document.getElementById("out").textContent =
-    "📅 7-day chart loaded";
-}
-
-function drawChart(labels, values, title) {
-  const ctx = document.getElementById("chart").getContext("2d");
-
-  if (chart) {
-    chart.destroy();
+  if (tempLayer) {
+    map.removeLayer(tempLayer);
   }
 
-  chart = new Chart(ctx, {
-    type: "line",
-    data: {
-      labels: labels,
-      datasets: [{
-        label: title,
-        data: values,
-        borderColor: "cyan",
-        backgroundColor: "rgba(0,255,255,0.1)",
-        tension: 0.3,
-        fill: true
-      }]
-    },
-    options: {
-      responsive: true,
-      plugins: {
-        legend: {
-          labels: { color: "white" }
-        }
-      },
-      scales: {
-        x: {
-          ticks: { color: "white" }
-        },
-        y: {
-          ticks: { color: "white" }
-        }
-      }
-    }
-  });
+  // Open-Meteo tile layer
+  const url =
+    model === 'gfs'
+      ? "https://tile.open-meteo.com/v1/temperature/{z}/{x}/{y}.png?model=gfs"
+      : "https://tile.open-meteo.com/v1/temperature/{z}/{x}/{y}.png?model=ecmwf";
+
+  tempLayer = L.tileLayer(url, {
+    opacity: 0.6
+  }).addTo(map);
 }
+
+// переключение моделей
+function setModel(model) {
+  addTempLayer(model);
+}
+
+// старт
+setModel('gfs');
 </script>
 
 </body>
