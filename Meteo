@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Meteo Dashboard</title>
+  <style>
+    body {
+      font-family: Arial;
+      background: #0f172a;
+      color: white;
+      text-align: center;
+    }
+
+    button {
+      margin: 5px;
+      padding: 10px 15px;
+      border: none;
+      cursor: pointer;
+      border-radius: 8px;
+    }
+
+    #out {
+      margin-top: 20px;
+      white-space: pre-wrap;
+      text-align: left;
+      display: inline-block;
+    }
+  </style>
+</head>
+
+<body>
+
+<h1>🌦 Meteo Dashboard</h1>
+
+<button onclick="current()">Current</button>
+<button onclick="last24()">24h</button>
+<button onclick="forecast()">7 days</button>
+
+<pre id="out">Click a button...</pre>
+
+<script>
+const lat = 49.84;
+const lon = 24.03;
+
+async function current() {
+  const r = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`
+  );
+  const d = await r.json();
+
+  document.getElementById("out").textContent =
+    "🌡 Current temperature: " + d.current.temperature_2m + "°C";
+}
+
+async function last24() {
+  const r = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`
+  );
+  const d = await r.json();
+
+  const last = d.hourly.temperature_2m.slice(-24);
+
+  let out = "📊 Last 24h:\n\n";
+  last.forEach((t, i) => {
+    out += `${i}: ${t}°C\n`;
+  });
+
+  document.getElementById("out").textContent = out;
+}
+
+async function forecast() {
+  const r = await fetch(
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&forecast_days=7`
+  );
+  const d = await r.json();
+
+  let out = "📅 7-day forecast:\n\n";
+
+  for (let i = 0; i < d.daily.time.length; i++) {
+    out += `${d.daily.time[i]} → ${d.daily.temperature_2m_min[i]}°C / ${d.daily.temperature_2m_max[i]}°C\n`;
+  }
+
+  document.getElementById("out").textContent = out;
+}
+</script>
+
+</body>
+</html>
