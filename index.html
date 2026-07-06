@@ -1,88 +1,80 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Weather Map</title>
+<meta charset="UTF-8" />
+<title>Weather Map</title>
 
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-    }
-
-    #map {
-      height: 90vh;
-      width: 100%;
-    }
-
-    .panel {
-      padding: 10px;
-      text-align: center;
-      background: #111827;
-    }
-
-    button {
-      margin: 5px;
-      padding: 10px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-  </style>
+<style>
+  body { margin:0; font-family:Arial; }
+  #map { height: 90vh; }
+  .panel {
+    background:#111827;
+    color:white;
+    padding:10px;
+    text-align:center;
+  }
+  button {
+    margin:5px;
+    padding:10px;
+    border:none;
+    border-radius:6px;
+    cursor:pointer;
+  }
+</style>
 </head>
 
 <body>
 
 <div class="panel">
-  <button onclick="setModel('gfs')">GFS</button>
-  <button onclick="setModel('ecmwf')">ECMWF</button>
+  <button onclick="setLayer('temp')">Temperature</button>
+  <button onclick="setLayer('wind')">Wind</button>
+  <button onclick="setLayer('clouds')">Clouds</button>
 </div>
 
 <div id="map"></div>
 
 <script>
-const lat = 49.84;
-const lon = 24.03;
-
-let map = L.map('map').setView([lat, lon], 6);
+const map = L.map('map').setView([49.84, 24.03], 6);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: 'OSM'
 }).addTo(map);
 
-let tempLayer;
+let layer;
 
-// 🌡 добавить слой температуры
-function addTempLayer(model) {
+// ⚠️ нужен API key (бесплатный)
+const API_KEY = "PUT_YOUR_OPENWEATHER_KEY_HERE";
 
-  if (tempLayer) {
-    map.removeLayer(tempLayer);
+function setLayer(type) {
+
+  if (layer) {
+    map.removeLayer(layer);
   }
 
-  // Open-Meteo tile layer
-  const url =
-    model === 'gfs'
-      ? "https://tile.open-meteo.com/v1/temperature/{z}/{x}/{y}.png?model=gfs"
-      : "https://tile.open-meteo.com/v1/temperature/{z}/{x}/{y}.png?model=ecmwf";
+  let url = "";
 
-  tempLayer = L.tileLayer(url, {
+  if (type === "temp") {
+    url = `https://tile.openweathermap.org/map/temp_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
+  }
+
+  if (type === "wind") {
+    url = `https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
+  }
+
+  if (type === "clouds") {
+    url = `https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${API_KEY}`;
+  }
+
+  layer = L.tileLayer(url, {
     opacity: 0.6
   }).addTo(map);
 }
 
-// переключение моделей
-function setModel(model) {
-  addTempLayer(model);
-}
-
 // старт
-setModel('gfs');
+setLayer("temp");
 </script>
 
 </body>
