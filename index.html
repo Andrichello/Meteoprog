@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <meta charset="UTF-8">
   <title>Meteo Dashboard</title>
   <style>
     body {
+      <canvas id="chart" width="400" height="200"></canvas>
       font-family: Arial;
       background: #0f172a;
       color: white;
@@ -39,8 +41,39 @@
 <pre id="out">Click a button...</pre>
 
 <script>
+let chart;
 const lat = 49.84;
 const lon = 24.03;
+  
+function drawChart(labels, values, title) {
+  const ctx = document.getElementById("chart").getContext("2d");
+
+  if (chart) chart.destroy();
+
+  chart = new Chart(ctx, {
+    type: "line",
+    data: {
+      labels: labels,
+      datasets: [{
+        label: title,
+        data: values,
+        borderColor: "cyan",
+        fill: false,
+        tension: 0.3
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "white" } }
+      },
+      scales: {
+        x: { ticks: { color: "white" } },
+        y: { ticks: { color: "white" } }
+      }
+    }
+  });
+}
 
 async function current() {
   const r = await fetch(
@@ -52,12 +85,20 @@ async function current() {
     "🌡 Current temperature: " + d.current.temperature_2m + "°C";
 }
 
-async function last24() {
+  async function last24() {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`
   );
   const d = await r.json();
 
+  const temps = d.hourly.temperature_2m.slice(-24);
+  const times = d.hourly.time.slice(-24).map(t => t.slice(11, 16));
+
+  drawChart(times, temps, "Temperature (24h)");
+
+  document.getElementById("out").textContent =
+    "📊 24h chart loaded";
+}
   const last = d.hourly.temperature_2m.slice(-24);
 
   let out = "📊 Last 24h:\n\n";
@@ -73,6 +114,15 @@ async function forecast() {
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&forecast_days=7`
   );
   const d = await r.json();
+
+  const days = d.daily.time;
+  const max = d.daily.temperature_2m_max;
+
+  drawChart(days, max, "Max temperature (7 days)");
+
+  document.getElementById("out").textContent =
+    "📅 7-day chart loaded";
+}
 
   let out = "📅 7-day forecast:\n\n";
 
