@@ -1,63 +1,79 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Meteo Dashboard</title>
+<meta charset="UTF-8">
+<title>Meteo Dashboard</title>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <style>
-    body {
-      font-family: Arial;
-      background: #0f172a;
-      color: white;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
-    }
+<style>
+  body {
+    font-family: Arial;
+    background: #0f172a;
+    color: white;
+    text-align: center;
+    padding: 20px;
+  }
 
-    button {
-      margin: 5px;
-      padding: 10px 15px;
-      border: none;
-      cursor: pointer;
-      border-radius: 8px;
-    }
+  button, select {
+    margin: 5px;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+  }
 
-    canvas {
-      margin-top: 20px;
-      max-width: 900px;
-      background: #111827;
-      border-radius: 10px;
-      padding: 10px;
-    }
+  canvas {
+    margin-top: 20px;
+    max-width: 900px;
+    background: #111827;
+    border-radius: 10px;
+  }
 
-    #out {
-      margin-top: 20px;
-      white-space: pre-wrap;
-    }
-  </style>
+  #out {
+    margin-top: 15px;
+    white-space: pre-wrap;
+  }
+</style>
 </head>
 
 <body>
 
 <h1>🌦 Meteo Dashboard</h1>
 
+<!-- 🌍 CITY SELECTOR -->
+<select id="city" onchange="changeCity()">
+  <option value="49.84,24.03">Lviv</option>
+  <option value="48.62,22.30">Uzhhorod</option>
+</select>
+
+<br>
+
 <button onclick="current()">Current</button>
 <button onclick="last24()">24h</button>
-<button onclick="forecast()">7 days</button>
+<button onclick="forecast14()">14 days</button>
 
-<pre id="out">Click a button...</pre>
+<pre id="out">Select action...</pre>
 
 <canvas id="chart"></canvas>
 
 <script>
-const lat = 49.84;
-const lon = 24.03;
 
 let chart = null;
 
+// default city
+let lat = 49.84;
+let lon = 24.03;
+
+// 🏙 change city
+function changeCity() {
+  const val = document.getElementById("city").value;
+  const parts = val.split(",");
+  lat = parts[0];
+  lon = parts[1];
+}
+
+// 🌡 current
 async function current() {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m`
@@ -65,9 +81,10 @@ async function current() {
   const d = await r.json();
 
   document.getElementById("out").textContent =
-    "🌡 Current temperature: " + d.current.temperature_2m + "°C";
+    "🌡 Current: " + d.current.temperature_2m + "°C";
 }
 
+// 📊 24h
 async function last24() {
   const r = await fetch(
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m&past_days=1`
@@ -75,35 +92,33 @@ async function last24() {
   const d = await r.json();
 
   const temps = d.hourly.temperature_2m.slice(-24);
-  const times = d.hourly.time.slice(-24).map(t => t.slice(11, 16));
+  const times = d.hourly.time.slice(-24).map(t => t.slice(11,16));
 
-  drawChart(times, temps, "Temperature (24h)");
-
-  document.getElementById("out").textContent =
-    "📊 24h chart loaded";
+  drawChart(times, temps, "24h temperature");
 }
 
-async function forecast() {
+// 📅 14 days (NEW)
+async function forecast14() {
   const r = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&forecast_days=7`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,temperature_2m_min&forecast_days=14`
   );
   const d = await r.json();
 
   const days = d.daily.time;
   const max = d.daily.temperature_2m_max;
+  const min = d.daily.temperature_2m_min;
 
-  drawChart(days, max, "Max Temperature (7 days)");
+  drawChart(days, max, "14-day max temperature");
 
   document.getElementById("out").textContent =
-    "📅 7-day chart loaded";
+    "📅 14-day forecast loaded";
 }
 
+// 📈 chart
 function drawChart(labels, values, title) {
   const ctx = document.getElementById("chart").getContext("2d");
 
-  if (chart) {
-    chart.destroy();
-  }
+  if (chart) chart.destroy();
 
   chart = new Chart(ctx, {
     type: "line",
@@ -112,7 +127,7 @@ function drawChart(labels, values, title) {
       datasets: [{
         label: title,
         data: values,
-        borderColor: "cyan",
+        borderColor: "#00ffff",
         backgroundColor: "rgba(0,255,255,0.1)",
         tension: 0.3,
         fill: true
@@ -126,16 +141,13 @@ function drawChart(labels, values, title) {
         }
       },
       scales: {
-        x: {
-          ticks: { color: "white" }
-        },
-        y: {
-          ticks: { color: "white" }
-        }
+        x: { ticks: { color: "white" } },
+        y: { ticks: { color: "white" } }
       }
     }
   });
 }
+
 </script>
 
 </body>
